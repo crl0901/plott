@@ -1,0 +1,7 @@
+.env
+__pycache__/
+*.pyc
+
+# Boards hold personal data: resumes, config, secrets, the job database, generated documents.
+boards/*
+!boards/.gitkeep

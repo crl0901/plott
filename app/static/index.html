@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plott</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='1' y='2' width='4' height='12' rx='1' fill='%2378a9ff'/><rect x='6' y='2' width='4' height='8' rx='1' fill='%23f0803c'/><rect x='11' y='2' width='4' height='5' rx='1' fill='%23e8c35a'/></svg>">
+  <link rel="stylesheet" href="/static/style.css">
+  <script>try { document.documentElement.dataset.theme = localStorage.getItem("theme") || "graphite"; } catch (e) {}</script>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <h1>Plott <span class="slash">/</span> <span id="who" class="who"></span></h1>
+      <div class="top-right">
+        <div class="today" id="today"></div>
+        <button type="button" class="icon-btn" id="settingsBtn" aria-label="Settings" title="Settings">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <section class="stats" id="stats"></section>
+
+    <section class="toolbar">
+      <div class="chips" id="chips"></div>
+      <input id="search" type="search" placeholder="Search company or role" autocomplete="off">
+      <button class="btn" id="addBtn">Add an application</button>
+      <span class="spacer"></span>
+      <span class="scrape-status" id="scrapeStatus"></span>
+      <button class="btn ghost" id="sourcesBtn">Sources</button>
+      <button class="btn accent" id="scrapeBtn">Scrape now</button>
+    </section>
+    <section class="toolbar sub"><span class="label">Source</span><div class="chips" id="srcChips"></div></section>
+
+    <main class="board" id="board"></main>
+  </div>
+
+  <!-- Details / edit modal -->
+  <dialog id="detailDlg" class="dlg wide">
+    <form method="dialog" id="detailForm">
+      <div class="dlg-head">
+        <div>
+          <div class="dlg-company" id="dCompany"></div>
+          <a class="dlg-title" id="dTitle" target="_blank" rel="noopener"></a>
+        </div>
+        <button type="button" class="x" onclick="this.closest('dialog').close()" aria-label="Close">×</button>
+      </div>
+      <div class="tags" id="dTags"></div>
+      <div class="fit" id="dFit"></div>
+      <div class="grid2">
+        <label>Status<select name="status" id="dStatus"></select></label>
+        <label>Pay<input name="pay" id="dPay"></label>
+        <label>Applied on<input name="applied_at" id="dApplied" type="date"></label>
+        <label>Category<select name="category" id="dCategory"></select></label>
+      </div>
+      <label>Notes<textarea name="notes" id="dNotes" rows="4"></textarea></label>
+      <div class="docs" id="dDocs"></div>
+      <details class="desc"><summary>Job description</summary><div id="dDesc"></div></details>
+      <div class="dlg-foot">
+        <button type="button" class="btn danger" id="dDelete">Delete (never show again)</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn accent" id="dSave">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Add modal -->
+  <dialog id="addDlg" class="dlg">
+    <form method="dialog" id="addForm">
+      <div class="dlg-head"><h2>Add an application</h2><button type="button" class="x" onclick="this.closest('dialog').close()" aria-label="Close">×</button></div>
+      <div class="grid2">
+        <label>Company*<input name="company" required></label>
+        <label>Role*<input name="title" required></label>
+        <label class="span2">Listing URL<input name="url" type="url"></label>
+        <label>Pay<input name="pay" placeholder="$150,000 - $180,000"></label>
+        <label>Workplace<select name="workplace"><option>remote</option><option>hybrid</option><option>onsite</option></select></label>
+        <label>Status<select name="status" id="aStatus"></select></label>
+        <label>Category<select name="category" id="aCategory"></select></label>
+      </div>
+      <label>Notes<textarea name="notes" rows="3"></textarea></label>
+      <div class="dlg-foot"><span class="err" id="addErr"></span><span class="spacer"></span><button class="btn accent" id="addSave" value="default">Add</button></div>
+    </form>
+  </dialog>
+
+  <!-- Sources modal -->
+  <dialog id="srcDlg" class="dlg wide">
+    <div class="dlg-head"><h2>Sources <small>config/sources.yaml</small></h2><button class="x" onclick="this.closest('dialog').close()" aria-label="Close">×</button></div>
+    <textarea id="srcText" class="code" spellcheck="false"></textarea>
+    <div class="dlg-foot"><span class="err" id="srcErr"></span><span class="spacer"></span><button class="btn accent" id="srcSave">Save</button></div>
+    <h3>Discovered companies <small id="coCount"></small></h3>
+    <p class="hint">Found automatically from Greenhouse, Ashby and Lever links in jobs the board has seen.
+      Every enabled board is scanned on each run. Untick a company to stop scanning it.</p>
+    <div class="cos" id="coList">None yet.</div>
+    <h3>Last run</h3>
+    <pre class="log" id="runLog">No runs yet.</pre>
+  </dialog>
+
+  <!-- Settings modal -->
+  <dialog id="setDlg" class="dlg settings">
+    <div class="dlg-head"><h2>Settings <small>config/profile.yaml</small></h2><button type="button" class="x" onclick="this.closest('dialog').close()" aria-label="Close">×</button></div>
+    <p class="hint">Changes save as soon as you make them. Lists and longer text (criteria, skills, title filters)
+      are edited in profile.yaml.</p>
+    <h3>Appearance</h3>
+    <div class="set-row">
+      <span class="set-label"><label for="themeSel">Theme</label><span class="info" tabindex="0" data-tip="Colors for the board. Saved in this browser only, so each person and device can pick their own.">i</span></span>
+      <span class="set-msg"></span>
+      <span class="set-ctl"><select id="themeSel"></select></span>
+    </div>
+    <div id="setBody"><p class="hint">Loading…</p></div>
+  </dialog>
+
+  <!-- Tailor resume / cover letter prompt -->
+  <dialog id="tailorDlg" class="dlg">
+    <form method="dialog" id="tailorForm">
+      <div class="dlg-head"><h2>Tailor your application?</h2><button class="x" value="close" aria-label="Close">×</button></div>
+      <p class="tailor-job" id="tJob"></p>
+      <p class="hint">Claude rewrites your resume for this listing using only what's already in it, and drafts a cover letter.
+        Files are saved as Markdown and PDF in the board's <code>resumes</code> and <code>cover-letters</code> folders.</p>
+      <label class="check"><input type="checkbox" id="tResume" checked> Tailored resume</label>
+      <label class="check"><input type="checkbox" id="tCover" checked> Cover letter</label>
+      <div class="dlg-foot"><span class="spacer"></span><button class="btn" value="skip">Not now</button><button class="btn accent" value="go" id="tGo">Create</button></div>
+    </form>
+  </dialog>
+
+  <div class="toasts" id="toasts"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+# One board per Compose project. Run it with ./plott.sh NAME ..., which sets BOARD_DIR to
+# boards/NAME and reads that board's .env (PORT, TZ, Claude and source keys).
+services:
+  plott:
+    build:
+      context: .
+      args:
+        APP_UID: ${APP_UID:-1000}          # set by plott.sh to your user ID
+        BWS_VERSION: ${BWS_VERSION:-}      # optional: install the Bitwarden Secrets Manager CLI
+    restart: unless-stopped
+    ports:
+      # Only this computer can reach the board unless BIND_ADDRESS is set. The board has no login.
+      - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-8765}:8000"
+    env_file: ${BOARD_DIR:?run the board with ./plott.sh NAME}/.env
+    environment:
+      TZ: ${TZ:-UTC}
+      RESUME_PATH: /resume/resume.md
+      RESUMES_DIR: /out/resumes
+      COVER_LETTERS_DIR: /out/cover-letters
+    volumes:
+      - ${BOARD_DIR}/config:/config                     # sources.yaml + profile.yaml (editable in the board)
+      - ${BOARD_DIR}/data:/data                         # SQLite database
+      - ${BOARD_DIR}/resume.md:/resume/resume.md:ro     # your base resume
+      - ${BOARD_DIR}/resumes:/out/resumes               # tailored resumes
+      - ${BOARD_DIR}/cover-letters:/out/cover-letters   # cover letters
