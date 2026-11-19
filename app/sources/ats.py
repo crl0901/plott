@@ -421,7 +421,8 @@ def _wd(slug, url, body=None):
             if wait > 0:
                 time.sleep(wait)
             _wd_last[0] = time.monotonic()
-        cmd = ["curl", "-s", "--max-time", "30", "-A", UA, "-H", "Accept: application/json",
+        cmd = ["curl", "-s", "--globoff", "--proto", "=https", "--max-filesize", "50M", "--max-time", "30",
+               "-A", UA, "-H", "Accept: application/json",
                "-H", "Accept-Language: en-US", "-w", "\n%{http_code}"]
         if body is not None:
             cmd += ["-X", "POST", "-H", "Content-Type: application/json", "--data-binary", json.dumps(body)]

@@ -1,5 +1,6 @@
 """Tailored resume + cover letter for one job, written by Claude (via Claude Code) and saved as Markdown and PDF into the resumes / cover-letters folders."""
 import datetime
+import html
 import json
 import logging
 import os
@@ -127,16 +128,26 @@ def _unique(path):
     return path
 
 
+def _no_fetch(url, *args, **kwargs):
+    """WeasyPrint URL fetcher that refuses everything. The PDF needs no outside files (the CSS is
+    inline), and model output must not be able to pull in local files or make requests."""
+    raise ValueError(f"blocked: {url[:100]}")
+
+
 def _pdf(md_text, path, kind):
     exts = ["sane_lists"] + (["nl2br"] if kind == "cover_letter" else [])
-    body = markdown.markdown(md_text, extensions=exts)
+    md = markdown.Markdown(extensions=exts)
+    md.preprocessors.deregister("html_block")   # raw HTML in the Markdown is shown as text
+    md.inlinePatterns.deregister("html")
+    body = md.convert(md_text)
     with open(CSS_PATH) as f:
         css = f.read()
     title = re.sub(r"^# +", "", md_text.strip().splitlines()[0]) if md_text.strip() else ""
+    title = html.escape(title, quote=True)
     doc_title = f"{title} - {'Cover Letter' if kind == 'cover_letter' else 'Resume'}"
     HTML(string=f'<html lang="en"><head><meta charset="utf-8"><title>{doc_title}</title>'
                 f'<meta name="author" content="{title}"><style>{css}</style></head>'
-                f'<body class="{kind}">{body}</body></html>').write_pdf(path)
+                f'<body class="{kind}">{body}</body></html>', url_fetcher=_no_fetch).write_pdf(path)
 
 
 def start(job_id, want_resume=True, want_cover=True):
@@ -194,6 +205,13 @@ def _run(job_id, want_resume, want_cover):
     except Exception as e:
         log.exception("document generation failed for job %s", job_id)
         status[job_id] = {"state": "error", "message": str(e)[:300]}
+
+
+def is_output_file(path):
+    """True for an existing file inside the resumes or cover-letters folder."""
+    real = os.path.realpath(path)
+    roots = [os.path.realpath(d) + os.sep for d in (RESUMES_DIR, COVER_DIR)]
+    return os.path.isfile(real) and any(real.startswith(r) for r in roots)
 
 
 def files(job_id):

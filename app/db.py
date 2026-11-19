@@ -48,6 +48,12 @@ JOB_FIELDS = ["source", "external_id", "dedupe_key", "company", "title", "url", 
               "documents"]
 
 
+def safe_url(url):
+    """The URL if it is http(s), else "". Stops javascript: and other schemes from reaching the board."""
+    u = (url or "").strip()
+    return u if re.match(r"^https?://", u, re.I) else ""
+
+
 def now():
     return datetime.datetime.now().isoformat(timespec="seconds")
 
@@ -102,6 +108,8 @@ def is_known(source, external_id, key):
 
 def add_job(job):
     job = {**job}
+    if "url" in job:
+        job["url"] = safe_url(job["url"])
     job.setdefault("dedupe_key", dedupe_key(job.get("company"), job.get("title")))
     job.setdefault("found_at", now())
     job.setdefault("status_changed_at", job["found_at"])
@@ -119,6 +127,8 @@ def mark_seen(job, reason, score=None):
 
 def update_job(job_id, fields):
     allowed = {k: v for k, v in fields.items() if k in JOB_FIELDS and k not in ("source", "external_id")}
+    if "url" in allowed:
+        allowed["url"] = safe_url(allowed["url"])
     if "status" in allowed:
         if allowed["status"] not in STATUSES:
             raise ValueError(f"bad status {allowed['status']}")

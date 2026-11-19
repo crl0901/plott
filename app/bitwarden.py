@@ -14,6 +14,17 @@ import subprocess
 log = logging.getLogger(__name__)
 
 
+# Variables that change how programs load code or reach the network. A secret must not set them.
+UNSAFE = {"PATH", "HOME", "SHELL", "ENV", "BASH_ENV", "IFS", "CDPATH", "PS4", "PERL5LIB", "PERL5OPT", "RUBYOPT",
+          "SSL_CERT_FILE", "SSL_CERT_DIR", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE", "HTTP_PROXY", "HTTPS_PROXY",
+          "ALL_PROXY", "NO_PROXY", "CONFIG_DIR", "DATA_DIR", "RESUME_PATH", "RESUMES_DIR", "COVER_LETTERS_DIR"}
+UNSAFE_PREFIXES = ("LD_", "DYLD_", "PYTHON", "NODE_", "NPM_", "BASH_", "GIT_")
+
+
+def _unsafe(key):
+    return key in UNSAFE or key.startswith(UNSAFE_PREFIXES)
+
+
 def load_secrets():
     if not os.environ.get("BWS_ACCESS_TOKEN"):
         return []   # Bitwarden is optional; secrets come from the board's .env
@@ -32,7 +43,7 @@ def load_secrets():
     loaded = []
     for s in json.loads(out.stdout):
         key = s.get("key", "")
-        if re.fullmatch(r"[A-Z_][A-Z0-9_]*", key) and key not in os.environ:
+        if re.fullmatch(r"[A-Z_][A-Z0-9_]*", key) and key not in os.environ and not _unsafe(key):
             os.environ[key] = s.get("value", "")
             loaded.append(key)
     log.info("Loaded %d secret(s) from Bitwarden: %s", len(loaded), ", ".join(loaded))

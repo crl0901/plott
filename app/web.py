@@ -1,9 +1,13 @@
 """HTTP and text helpers shared by the scrapers."""
+import functools
 import html
+import ipaddress
 import re
+import socket
+import threading
 import time
 import warnings
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlsplit
 
 import requests
 from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
@@ -15,14 +19,75 @@ session = requests.Session()
 session.headers.update({"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9"})
 
 
+MAX_BYTES = 50 * 1024 * 1024   # largest response read (big company boards with descriptions are ~20 MB)
+MAX_SECONDS = 120              # longest one request may take, including a slow body
+MAX_REDIRECTS = 5
+
+
+class BlockedURL(Exception):
+    """Not http(s), or the host is not a public internet address."""
+
+
+@functools.lru_cache(maxsize=4096)
+def _public_host(host):
+    """True when every address the host resolves to is on the public internet. Raises on a DNS failure
+    (failures are not cached)."""
+    infos = socket.getaddrinfo(host, None)
+    return bool(infos) and all(ipaddress.ip_address(i[4][0].split("%")[0]).is_global for i in infos)
+
+
+def url_allowed(url):
+    """Job links come from scraped data, so a link must not reach this computer or the local network."""
+    try:
+        p = urlsplit(url)
+        return p.scheme in ("http", "https") and bool(p.hostname) and _public_host(p.hostname)
+    except (ValueError, OSError):
+        return False
+
+
+def _fetch(url, params, timeout):
+    """One GET, following redirects by hand so each hop is checked, with size and time limits."""
+    for _ in range(MAX_REDIRECTS + 1):
+        if not url_allowed(url):
+            raise BlockedURL(url)
+        resp = session.get(url, params=params, timeout=timeout, allow_redirects=False, stream=True)
+        if resp.is_redirect:
+            url, params = urljoin(resp.url, resp.headers["location"]), None
+            resp.close()
+            continue
+        timer = threading.Timer(MAX_SECONDS, resp.close)   # stops a server that sends very slowly
+        timer.start()
+        try:
+            chunks, size = [], 0
+            for chunk in resp.iter_content(64 * 1024):
+                size += len(chunk)
+                if size > MAX_BYTES:
+                    raise requests.RequestException("response too large")
+                chunks.append(chunk)
+        except requests.RequestException:
+            resp.close()
+            raise
+        except Exception as e:   # the timer closed the connection mid-read
+            resp.close()
+            raise requests.RequestException(f"read failed: {type(e).__name__}") from None
+        finally:
+            timer.cancel()
+        resp._content = b"".join(chunks)
+        return resp
+    raise requests.RequestException("too many redirects")
+
+
 def get(url, params=None, tries=3, timeout=30):
-    """GET with retry on 429/5xx/network errors. Returns a Response (any status) or None."""
+    """GET with retry on 429/5xx/network errors. Returns a Response (any status) or None. Only
+    public http(s) addresses are fetched."""
     resp = None
     for i in range(tries):
         try:
-            resp = session.get(url, params=params, timeout=timeout)
+            resp = _fetch(url, params, timeout)
             if resp.status_code != 429 and resp.status_code < 500:
                 return resp
+        except BlockedURL:
+            return None
         except requests.RequestException:
             resp = None
         time.sleep(3 * (i + 1))

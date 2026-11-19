@@ -1,4 +1,5 @@
 """FastAPI app: board API, sources editor, settings, scrape trigger, daily schedule."""
+import ipaddress
 import logging
 import os
 import threading
@@ -8,7 +9,7 @@ import yaml
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from fastapi import Body, FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import bitwarden, claude, config, db, discovery, documents, scrape, settings, skills
@@ -47,6 +48,40 @@ async def lifespan(app):
 
 app = FastAPI(title="Plott", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
+
+
+# Host names the board answers to, besides localhost and IP addresses (comma-separated).
+ALLOWED_HOSTS = {h.strip().lower() for h in os.environ.get("ALLOWED_HOSTS", "").split(",") if h.strip()}
+
+
+def _host_ok(host):
+    """localhost, an IP address, or a name in ALLOWED_HOSTS. Blocks DNS rebinding, where a web page
+    on another domain re-points its name at this board: the browser then sends that domain as Host."""
+    h = (host or "").strip().lower()
+    if h.startswith("["):                 # [::1]:8765
+        h = h[1:h.find("]")] if "]" in h else ""
+    elif h.count(":") == 1:               # name:port
+        h = h.split(":")[0]
+    if h == "localhost" or h in ALLOWED_HOSTS:
+        return True
+    try:
+        ipaddress.ip_address(h)
+        return True
+    except ValueError:
+        return False
+
+
+@app.middleware("http")
+async def guard(request, call_next):
+    """The board has no login, so refuse requests that a web page on another site could send."""
+    if not _host_ok(request.headers.get("host")):
+        return JSONResponse({"detail": "Unknown host name. Add it to ALLOWED_HOSTS in the board's .env."},
+                            status_code=403)
+    # Browsers only let a page on another site add a custom header after a CORS check, which this
+    # app never approves, so this header proves the request came from the board's own page.
+    if request.method not in ("GET", "HEAD", "OPTIONS") and request.headers.get("x-plott") != "1":
+        return JSONResponse({"detail": "Missing X-Plott header"}, status_code=403)
+    return await call_next(request)
 
 
 @app.middleware("http")
@@ -127,10 +162,17 @@ def add_job(body: dict = Body(...)):
     return {"id": job_id}
 
 
+# The fields a person edits on a card. Everything else (score, documents, description...) is set
+# only by the app.
+EDITABLE = {"company", "title", "url", "location", "workplace", "employment_type", "pay", "category", "notes",
+            "status", "applied_at"}
+
+
 @app.patch("/api/jobs/{job_id}")
 def patch_job(job_id: int, body: dict = Body(...)):
+    get_job(job_id)
     try:
-        db.update_job(job_id, body)
+        db.update_job(job_id, {k: v for k, v in body.items() if k in EDITABLE})
     except ValueError as e:
         raise HTTPException(400, str(e))
     return get_job(job_id)
@@ -194,6 +236,7 @@ def scrape_status():
 
 @app.get("/api/screened")
 def screened(limit: int = 200):
+    limit = max(1, min(limit, 1000))
     return db.q("SELECT * FROM seen ORDER BY at DESC LIMIT ?", (limit,))
 
 
@@ -235,7 +278,7 @@ def document_status(job_id: int):
 @app.get("/api/jobs/{job_id}/documents/{kind}")
 def document_file(job_id: int, kind: str):
     path = documents.files(job_id).get(kind) if kind in DOC_KINDS else None
-    if not path or not os.path.exists(path):
+    if not path or not documents.is_output_file(path):
         raise HTTPException(404)
     media = "application/pdf" if path.endswith(".pdf") else "text/markdown; charset=utf-8"
     return FileResponse(path, media_type=media, filename=os.path.basename(path),

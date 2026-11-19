@@ -25,8 +25,12 @@ let state = { jobs: [], profile: {}, chip: "All", source: "All", search: "" };
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+// Only http(s) links are shown as links. Job links come from scraped data.
+const safeUrl = (u) => { try { const x = new URL(u, location.href); return ["http:", "https:"].includes(x.protocol) ? x.href : ""; } catch { return ""; } };
+
 async function api(path, opts = {}) {
-  const r = await fetch(path, { headers: { "Content-Type": "application/json" }, ...opts,
+  // X-Plott tells the server the request came from this page (see the guard in app/main.py).
+  const r = await fetch(path, { headers: { "Content-Type": "application/json", "X-Plott": "1" }, ...opts,
     body: opts.body ? JSON.stringify(opts.body) : undefined });
   const data = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(data.detail || r.statusText);
@@ -74,7 +78,7 @@ function renderStats() {
   const replied = applied.filter(j => ["interviewing", "offer", "rejected"].includes(j.status)).length;
   const rate = applied.length ? Math.round((replied / applied.length) * 100) : 0;
   const stats = [
-    [`${today} <small>/ ${state.profile.daily_goal}</small>`, "Applied today"], [week, "Last 7 days"],
+    [`${today} <small>/ ${esc(state.profile.daily_goal)}</small>`, "Applied today"], [week, "Last 7 days"],
     [applied.length, "Total applied"], [count("applied"), "Awaiting reply"], [count("interviewing"), "Interviewing"],
     [count("offer"), "Offers"], [`${rate}%`, "Reply rate"],
   ];
@@ -90,7 +94,7 @@ function tagsFor(j) {
   if (j.has_docs) t.push(`<span class="tag blue">Tailored</span>`);
   if (j.status === "shortlisted" && j.score != null) {
     const cls = j.score >= 85 ? "green" : j.score >= 70 ? "" : "yellow";
-    t.push(`<span class="tag ${cls}">match ${j.score}</span>`);
+    t.push(`<span class="tag ${cls}">match ${esc(Number(j.score))}</span>`);
   }
   const d = daysSince(j.applied_at);
   if (j.status === "applied" && d != null && d >= (state.profile.no_reply_days || 14))
@@ -118,7 +122,7 @@ function card(j) {
   const opts = COLUMNS.map(c => `<option value="${c.id}" ${c.id === j.status ? "selected" : ""}>${c.label}</option>`).join("");
   return `<article class="card" draggable="true" data-id="${j.id}">
     <div class="company">${esc(j.company)}</div>
-    <a class="role" ${j.url ? `href="${esc(j.url)}" target="_blank" rel="noopener"` : ""}>${esc(j.title)}</a>
+    <a class="role" ${safeUrl(j.url) ? `href="${esc(safeUrl(j.url))}" target="_blank" rel="noopener noreferrer"` : ""}>${esc(j.title)}</a>
     <div class="tags">${tagsFor(j)}</div>
     ${skillLine(j)}
     <div class="meta">${meta}${via}</div>
@@ -281,7 +285,7 @@ async function openDetails(id) {
   const j = current = await api(`/api/jobs/${id}`);
   $("#dCompany").textContent = j.company;
   $("#dTitle").textContent = j.title;
-  j.url ? $("#dTitle").setAttribute("href", j.url) : $("#dTitle").removeAttribute("href");
+  safeUrl(j.url) ? $("#dTitle").setAttribute("href", safeUrl(j.url)) : $("#dTitle").removeAttribute("href");
   const where = [j.location, j.workplace, j.employment_type, j.source].filter(Boolean).map(esc).map(s => `<span class="tag">${s}</span>`);
   $("#dTags").innerHTML = tagsFor(j) + where.join("");
   $("#dFit").innerHTML = (j.fit_summary ? `<div><b>Why it fits:</b> ${esc(j.fit_summary)}</div>` : "") +

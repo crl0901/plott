@@ -28,7 +28,9 @@ edits `sources.yaml`.
 |---|---|
 | `PORT` | Port for the web page. Default `8765`. Give each board its own port. |
 | `TZ` | Time zone for the daily scrape and for dates, for example `America/Chicago`. Default `UTC`. |
-| `BIND_ADDRESS` | `127.0.0.1` (default): only this computer can open the board. `0.0.0.0`: other devices on your network can too. The board has no login, so do not expose it to the internet. |
+| `BIND_ADDRESS` | `127.0.0.1` (default): only this computer can open the board. `0.0.0.0`: other devices on your network can too. The board has no login, so anyone who can reach it can use it. Do not expose it to the internet, and use `0.0.0.0` only on a network you trust. |
+| `ALLOWED_HOSTS` | Host names the board answers to, separated by commas, for example `plott.home.lan`. `localhost` and IP addresses always work. Requests that use any other name are refused. |
+| `MEM_LIMIT` | The most memory the board can use. Default `2g`. |
 | `CLAUDE_CODE_OAUTH_TOKEN` | Claude Pro or Max subscription token. Create it with `claude setup-token`. Lasts one year. |
 | `ANTHROPIC_API_KEY` | Anthropic API key, billed per use. Ignored when `CLAUDE_CODE_OAUTH_TOKEN` is set. |
 | `REMOTEROCKETSHIP_API_KEY` | Optional. Remote Rocketship API key. Without it, Plott reads their public search page. |
@@ -178,15 +180,22 @@ every 2 seconds. With `boards_per_run`, each run searches the next part of the l
 
 Instead of putting secrets in `.env`, you can keep them in Bitwarden Secrets Manager:
 
-1. Add `BWS_VERSION=2.1.0` to the board's `.env` (this installs the `bws` CLI in the image) and
-   rebuild with `./plott.sh NAME up -d --build`.
+1. Add these lines to the board's `.env`, which install the `bws` CLI in the image, and rebuild
+   with `./plott.sh NAME up -d --build`:
+   ```
+   BWS_VERSION=2.1.0
+   BWS_SHA256=ba8233c3a4aee5d43e3c73bbd04d99e9bc5aba13bbbfd06d89b073abe732b860
+   ```
+   For another version, use the SHA-256 of `bws-x86_64-unknown-linux-gnu-<version>.zip` from
+   that release's checksum file.
 2. In Bitwarden, create a project and a machine account that can read only that project. Add each
    secret with the variable name as its key, for example `CLAUDE_CODE_OAUTH_TOKEN`.
 3. In `.env`, set `BWS_ACCESS_TOKEN` (the machine account's access token) and, optionally,
    `BWS_PROJECT_ID`.
 
 At startup the board loads every secret the machine account can read. Values already set in
-`.env` take priority.
+`.env` take priority. Secrets named like system settings (for example `PATH` or names starting
+with `LD_` or `PYTHON`) are ignored.
 
 ## Data
 

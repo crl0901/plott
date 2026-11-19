@@ -151,8 +151,9 @@ account, and data.
   updated. Errors appear in the run log under **Sources**.
 - Some sites limit automated access. Check the terms of each site you search, and keep the number
   of pages low.
-- The board has no login. By default, only your own computer can open it. Do not expose it to
-  the internet.
+- The board has no login. By default, only your own computer can open it. If you let other
+  devices on your network open it (`BIND_ADDRESS`), anyone on that network can use it. Do not
+  expose it to the internet.
 
 ## Troubleshooting
 

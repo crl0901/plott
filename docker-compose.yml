@@ -7,7 +7,13 @@ services:
       args:
         APP_UID: ${APP_UID:-1000}          # set by plott.sh to your user ID
         BWS_VERSION: ${BWS_VERSION:-}      # optional: install the Bitwarden Secrets Manager CLI
+        BWS_SHA256: ${BWS_SHA256:-}        # required with BWS_VERSION
     restart: unless-stopped
+    # Limits: no Linux capabilities, no privilege changes, and caps on memory and processes.
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: ${MEM_LIMIT:-2g}
+    pids_limit: 512
     ports:
       # Only this computer can reach the board unless BIND_ADDRESS is set. The board has no login.
       - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-8765}:8000"
