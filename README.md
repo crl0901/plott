@@ -167,6 +167,10 @@ account, and data.
 | `Claude usage limit` in the log | Your subscription's limit was reached. The remaining jobs are scored on the next run. Lower **Jobs reviewed per run** in Settings. |
 | `Permission denied` on Linux | Add your user to the `docker` group, then log out and back in. |
 
+## Security
+
+To report a security problem, see [SECURITY.md](SECURITY.md). Do not use public issues for it.
+
 ## License
 
 Plott is free software under the GNU Affero General Public License v3.0. See [LICENSE](LICENSE).
