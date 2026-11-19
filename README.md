@@ -38,7 +38,7 @@ only when you set Claude up.
 ### 1. Download Plott
 
 ```bash
-git clone <repository-url> plott
+git clone https://github.com/crl0901/plott.git
 cd plott
 ```
 
