@@ -14,6 +14,14 @@ services:
     security_opt: [no-new-privileges:true]
     mem_limit: ${MEM_LIMIT:-2g}
     pids_limit: 512
+    # The image is read-only. The app writes only to the mounted folders below and to these
+    # in-memory folders (temporary files, and Claude Code's and font settings).
+    read_only: true
+    tmpfs:
+      - /tmp:mode=1777,size=256m
+      - /home/app/.claude:uid=${APP_UID:-1000},mode=0700,size=64m
+      - /home/app/.cache:uid=${APP_UID:-1000},mode=0700,size=64m
+      - /home/app/.config:uid=${APP_UID:-1000},mode=0700,size=16m
     ports:
       # Only this computer can reach the board unless BIND_ADDRESS is set. The board has no login.
       - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-8765}:8000"

@@ -6,7 +6,7 @@
   <title>Plott</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect x='1' y='2' width='4' height='12' rx='1' fill='%2378a9ff'/><rect x='6' y='2' width='4' height='8' rx='1' fill='%23f0803c'/><rect x='11' y='2' width='4' height='5' rx='1' fill='%23e8c35a'/></svg>">
   <link rel="stylesheet" href="/static/style.css">
-  <script>try { document.documentElement.dataset.theme = localStorage.getItem("theme") || "graphite"; } catch (e) {}</script>
+  <script src="/static/theme.js"></script>
 </head>
 <body>
   <div class="wrap">
@@ -44,7 +44,7 @@
           <div class="dlg-company" id="dCompany"></div>
           <a class="dlg-title" id="dTitle" target="_blank" rel="noopener noreferrer"></a>
         </div>
-        <button type="button" class="x" onclick="this.closest('dialog').close()" aria-label="Close">×</button>
+        <button type="button" class="x" data-close aria-label="Close">×</button>
       </div>
       <div class="tags" id="dTags"></div>
       <div class="fit" id="dFit"></div>
@@ -68,7 +68,7 @@
   <!-- Add modal -->
   <dialog id="addDlg" class="dlg">
     <form method="dialog" id="addForm">
-      <div class="dlg-head"><h2>Add an application</h2><button type="button" class="x" onclick="this.closest('dialog').close()" aria-label="Close">×</button></div>
+      <div class="dlg-head"><h2>Add an application</h2><button type="button" class="x" data-close aria-label="Close">×</button></div>
       <div class="grid2">
         <label>Company*<input name="company" required></label>
         <label>Role*<input name="title" required></label>
@@ -85,7 +85,7 @@
 
   <!-- Sources modal -->
   <dialog id="srcDlg" class="dlg wide">
-    <div class="dlg-head"><h2>Sources <small>config/sources.yaml</small></h2><button class="x" onclick="this.closest('dialog').close()" aria-label="Close">×</button></div>
+    <div class="dlg-head"><h2>Sources <small>config/sources.yaml</small></h2><button class="x" data-close aria-label="Close">×</button></div>
     <textarea id="srcText" class="code" spellcheck="false"></textarea>
     <div class="dlg-foot"><span class="err" id="srcErr"></span><span class="spacer"></span><button class="btn accent" id="srcSave">Save</button></div>
     <h3>Discovered companies <small id="coCount"></small></h3>
@@ -98,7 +98,7 @@
 
   <!-- Settings modal -->
   <dialog id="setDlg" class="dlg settings">
-    <div class="dlg-head"><h2>Settings <small>config/profile.yaml</small></h2><button type="button" class="x" onclick="this.closest('dialog').close()" aria-label="Close">×</button></div>
+    <div class="dlg-head"><h2>Settings <small>config/profile.yaml</small></h2><button type="button" class="x" data-close aria-label="Close">×</button></div>
     <p class="hint">Changes save as soon as you make them. Lists and longer text (criteria, skills, title filters)
       are edited in profile.yaml.</p>
     <h3>Appearance</h3>

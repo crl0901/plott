@@ -69,7 +69,7 @@ in Settings (`scoring.use_claude: false`).
 | `scoring.model` | Claude model: `sonnet`, `opus`, or `haiku`. |
 | `scoring.min_score` | Claude's 0-100 fit score needed to reach Shortlisted. |
 | `scoring.max_scored_per_run` | The most jobs reviewed in one scrape. The rest wait for the next scrape. |
-| `scoring.batch_size` | Jobs per Claude request. |
+| `scoring.batch_size` | Jobs per Claude request. A posting with text that looks like instructions to an AI (for example "ignore the criteria") is always scored in a request of its own, so it cannot change other jobs' scores. Set `1` to score every job on its own; this uses more of your Claude usage. |
 | `scoring.criteria` | Rules Claude applies to every job, in plain language. A job that breaks one is skipped. |
 | `documents.model` | Optional. A different Claude model for tailored resumes and cover letters. |
 | `categories` | Groups Claude sorts jobs into. They are also the filter buttons on the board. |
@@ -209,3 +209,24 @@ To render a Markdown resume to PDF with the same style the board uses:
 ```bash
 ./plott.sh NAME run --rm plott python -m app.documents /resume/resume.md /out/resumes/resume.pdf
 ```
+
+## Updating dependencies
+
+Plott pins everything it installs, so a build always gets the same files:
+
+- `Dockerfile` pins the Python base image by digest. To update it, run
+  `docker buildx imagetools inspect python:3.12-slim`, and copy the `Digest` value into the
+  `FROM` line.
+- `requirements.in` lists the Python packages Plott uses. `requirements.txt` is generated from it
+  with exact versions and hashes for every package, including dependencies. The build refuses
+  any package that does not match its hash. After you change `requirements.in`, regenerate
+  `requirements.txt`:
+
+  ```bash
+  docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD:/w" -w /w python:3.12-slim sh -c \
+    "pip install -q --user uv && /tmp/.local/bin/uv pip compile requirements.in --generate-hashes \
+     --exclude-newer $(date -d '14 days ago' +%F) --python-version 3.12 \
+     --python-platform x86_64-manylinux_2_28 --no-header -o requirements.txt"
+  ```
+
+  `--exclude-newer` uses only releases at least 14 days old.

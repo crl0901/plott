@@ -169,11 +169,14 @@ def run(trigger="manual"):
     return True
 
 
-def expire_applied(prof):
-    """Applied cards with no change for cleanup.applied_no_response_days (default 60) go to No Response."""
+def expire_applied(prof, quiet=False):
+    """Applied cards with no change for cleanup.applied_no_response_days (default 60) go to No Response.
+    quiet: write to the server log only, not the scrape log shown in the board."""
     days = int((prof.get("cleanup") or {}).get("applied_no_response_days", 60) or 0)
     moved = db.expire_applied(days) if days > 0 else []
-    if moved:
+    if moved and quiet:
+        log.info("Cleanup: moved %d card(s) applied %d+ days ago to No Response", len(moved), days)
+    elif moved:
         _say(f"Cleanup: moved {len(moved)} card(s) applied {days}+ days ago to No Response")
         for r in moved:
             _say(f"  no response: {r['company']} – {r['title']}")
@@ -267,9 +270,10 @@ def _run(summary):
     batch_size = int(sc.get("batch_size", 5))
     pending = iter(candidates)
     left = len(candidates)
+    solo = []   # postings that look like they hold instructions for Claude: each is scored alone
     while summary["scored"] < budget:
-        batch = []
-        for j in pending:  # enrich + description-based rules until we have a full batch
+        batch = [solo.pop(0)] if solo and use_claude else []
+        for j in ([] if batch else pending):  # enrich + description-based rules until we have a full batch
             left -= 1
             j = enrich(j)
             if j.get("_retry"):
@@ -282,6 +286,14 @@ def _run(summary):
                 summary["screened_out"] += 1
                 _say(f"  skip {j['company']} – {j['title']}: {r}")
                 continue
+            if use_claude and claude.suspicious(j):
+                # Scored in a batch of its own, so its text can't change the scores of other postings
+                _say(f"  {j['company']} – {j['title']}: posting contains instruction-like text; scoring it alone")
+                if batch:
+                    solo.append(j)
+                    continue
+                batch.append(j)
+                break
             batch.append(j)
             if len(batch) >= min(batch_size, budget - summary["scored"]):
                 break

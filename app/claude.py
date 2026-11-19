@@ -97,6 +97,21 @@ def _call(system, user, schema, model=DEFAULT_MODEL, timeout=600):
     return so
 
 
+# Wording that addresses an AI model rather than a job seeker. A posting that has it is scored in a
+# call of its own, so it can't affect other postings' scores.
+INJECTION = re.compile(
+    r"\b(ignore|disregard|forget|override)\b.{0,40}\b(instructions?|prompts?|rules|criteria|above|previous|prior)\b"
+    r"|\bsystem prompt\b|\b(you are|act as) (an? )?(ai (model|assistant|system|agent)|language model|llm|chatbot|claude|chatgpt|gpt)\b"
+    r"|\b(score|rate|rank) (this|it|all|every|the other|other)\b.{0,40}\b(\d{2,3}|higher|lower|postings?|jobs?)\b"
+    r"|\bverdict\b|\bskip_reason\b|\bfit_summary\b|<\s*/?\s*(posting|resume|criteria|system)\b",
+    re.I | re.S)
+
+
+def suspicious(job):
+    text = f"{job.get('title') or ''}\n{job.get('company') or ''}\n{job.get('description') or ''}"
+    return bool(INJECTION.search(text))
+
+
 def _score_schema(categories):
     item = {
         "type": "object",

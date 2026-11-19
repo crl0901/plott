@@ -1,7 +1,7 @@
 """Remote-only job sites with public feeds."""
 import re
 import time
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET   # refuses entity-expansion and external-entity XML
 
 from html import unescape
 

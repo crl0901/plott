@@ -5,7 +5,7 @@ import re
 import subprocess
 import threading
 import time
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET   # refuses entity-expansion and external-entity XML
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 from urllib.parse import unquote, urlparse

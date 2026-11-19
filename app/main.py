@@ -4,10 +4,12 @@ import logging
 import os
 import threading
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 import yaml
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -20,9 +22,19 @@ STATIC = os.path.join(os.path.dirname(__file__), "static")
 scheduler = BackgroundScheduler()
 
 
+def _expire():
+    """Move old Applied cards to No Response. Runs at startup and every hour, so it happens even when
+    scraping is off, without the board page having to change data when it loads."""
+    try:
+        scrape.expire_applied(config.profile(), quiet=True)
+    except Exception:
+        log.exception("No Response cleanup failed")
+
+
 def _schedule():
     sch = config.profile().get("schedule", {})
     scheduler.remove_all_jobs()
+    scheduler.add_job(_expire, IntervalTrigger(hours=1), id="expire", next_run_time=datetime.now(), coalesce=True)
     if sch.get("enabled", True):
         scheduler.add_job(scrape.run, CronTrigger(hour=sch.get("hour", 7), minute=sch.get("minute", 0)),
                           kwargs={"trigger": "scheduled"}, id="daily", misfire_grace_time=3600, coalesce=True)
@@ -71,6 +83,13 @@ def _host_ok(host):
         return False
 
 
+MAX_BODY = 2 * 1024 * 1024
+# Scripts only from the board's own files: no inline scripts or event-handler attributes. Inline
+# style attributes are allowed (the board sets column colors with them).
+CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+       "connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'")
+
+
 @app.middleware("http")
 async def guard(request, call_next):
     """The board has no login, so refuse requests that a web page on another site could send."""
@@ -79,9 +98,24 @@ async def guard(request, call_next):
                             status_code=403)
     # Browsers only let a page on another site add a custom header after a CORS check, which this
     # app never approves, so this header proves the request came from the board's own page.
-    if request.method not in ("GET", "HEAD", "OPTIONS") and request.headers.get("x-plott") != "1":
-        return JSONResponse({"detail": "Missing X-Plott header"}, status_code=403)
-    return await call_next(request)
+    if request.method not in ("GET", "HEAD", "OPTIONS"):
+        if request.headers.get("x-plott") != "1":
+            return JSONResponse({"detail": "Missing X-Plott header"}, status_code=403)
+        # Bodies must state their size, and stay small (the largest is sources.yaml).
+        if "chunked" in request.headers.get("transfer-encoding", "").lower():
+            return JSONResponse({"detail": "Send a Content-Length header"}, status_code=411)
+        try:
+            size = int(request.headers.get("content-length") or 0)
+        except ValueError:
+            return JSONResponse({"detail": "Bad Content-Length"}, status_code=400)
+        if size > MAX_BODY:
+            return JSONResponse({"detail": "Request too large"}, status_code=413)
+    response = await call_next(request)
+    if response.headers.get("content-type", "").startswith("text/html"):
+        response.headers["Content-Security-Policy"] = CSP
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["Referrer-Policy"] = "no-referrer"
+    return response
 
 
 @app.middleware("http")
@@ -122,7 +156,6 @@ def _with_skills(p, jobs):
 @app.get("/api/board")
 def board():
     p = config.profile()
-    scrape.expire_applied(p)   # also runs at the start of each scrape; here too in case scraping is off
     nxt = scheduler.get_job("daily")
     return {
         "profile": {"name": p.get("name", ""), "daily_goal": p.get("daily_goal", 10),

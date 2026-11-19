@@ -181,7 +181,7 @@ function toast(key, html, cls = "") {
   let el = document.querySelector(`.toast[data-key="${key}"]`);
   if (!el) { el = document.createElement("div"); el.dataset.key = key; $("#toasts").append(el); }
   el.className = `toast ${cls}`;
-  el.innerHTML = `<button class="x" aria-label="Dismiss" onclick="this.parentElement.remove()">×</button>${html}`;
+  el.innerHTML = `<button class="x" aria-label="Dismiss" data-dismiss>×</button>${html}`;
 }
 
 async function makeDocs(id, resume, cover) {
@@ -219,6 +219,9 @@ async function renderDocs(id) {
 
 // --- events
 document.addEventListener("click", (e) => {
+  if (e.target.closest("[data-close]")) e.target.closest("dialog")?.close();
+  const dismiss = e.target.closest("[data-dismiss]");
+  if (dismiss) dismiss.parentElement.remove();
   const chip = e.target.closest("[data-chip]");
   if (chip) { state.chip = chip.dataset.chip; render(); }
   const src = e.target.closest("[data-src]");
