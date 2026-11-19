@@ -217,6 +217,11 @@ Plott pins everything it installs, so a build always gets the same files:
 - `Dockerfile` pins the Python base image by digest. To update it, run
   `docker buildx imagetools inspect python:3.12-slim`, and copy the `Digest` value into the
   `FROM` line.
+- `Dockerfile` pins Claude Code by version and by the SHA-256 of its binary for each architecture.
+  To change the version, open
+  `https://downloads.claude.ai/claude-code-releases/<version>/manifest.json` and copy the
+  `checksum` values for `linux-x64` and `linux-arm64` into `CLAUDE_CODE_SHA256_X64` and
+  `CLAUDE_CODE_SHA256_ARM64`, and the version into `CLAUDE_CODE_VERSION`.
 - `requirements.in` lists the Python packages Plott uses. `requirements.txt` is generated from it
   with exact versions and hashes for every package, including dependencies. The build refuses
   any package that does not match its hash. After you change `requirements.in`, regenerate
