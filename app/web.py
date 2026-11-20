@@ -1,5 +1,4 @@
 """HTTP and text helpers shared by the scrapers."""
-import functools
 import html
 import ipaddress
 import re
@@ -11,14 +10,15 @@ from urllib.parse import urljoin, urlsplit
 
 import requests
 from bs4 import BeautifulSoup, MarkupResemblesLocatorWarning
+from requests.adapters import HTTPAdapter
+from urllib3.connection import HTTPConnection, HTTPSConnection
+from urllib3.connectionpool import HTTPConnectionPool, HTTPSConnectionPool
+from urllib3.exceptions import ConnectTimeoutError, NameResolutionError, NewConnectionError
+from urllib3.util.connection import allowed_gai_family
 
 warnings.filterwarnings("ignore", category=MarkupResemblesLocatorWarning)
 
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36"
-session = requests.Session()
-session.headers.update({"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9"})
-
-
 MAX_BYTES = 50 * 1024 * 1024   # largest response read (big company boards with descriptions are ~20 MB)
 MAX_SECONDS = 120              # longest one request may take, including a slow body
 MAX_REDIRECTS = 5
@@ -28,27 +28,78 @@ class BlockedURL(Exception):
     """Not http(s), or the host is not a public internet address."""
 
 
-@functools.lru_cache(maxsize=4096)
-def _public_host(host):
-    """True when every address the host resolves to is on the public internet. Raises on a DNS failure
-    (failures are not cached)."""
-    infos = socket.getaddrinfo(host, None)
-    return bool(infos) and all(ipaddress.ip_address(i[4][0].split("%")[0]).is_global for i in infos)
+def _is_public(ip):
+    return ipaddress.ip_address(ip.split("%")[0]).is_global
 
 
-def url_allowed(url):
-    """Job links come from scraped data, so a link must not reach this computer or the local network."""
+class _PublicOnly:
+    """Job links come from scraped data, so a link must not reach this computer or the local network.
+    The host is resolved once, every address is checked, and the connection goes to a checked address.
+    Checking here instead of before the request avoids a second DNS lookup per host (a scrape reads
+    thousands of hosts, and DNS servers such as Pi-hole limit queries per minute), and the address
+    can't change between the check and the connection."""
+
+    def _new_conn(self):
+        try:
+            infos = socket.getaddrinfo(self._dns_host, self.port, allowed_gai_family(), socket.SOCK_STREAM)
+        except socket.gaierror as e:
+            raise NameResolutionError(self.host, self, e) from e
+        ips = list(dict.fromkeys(i[4][0] for i in infos))
+        if not ips or not all(_is_public(ip) for ip in ips):
+            raise BlockedURL(self.host)
+        name, err = self._dns_host, None
+        try:
+            for ip in ips:   # TLS still checks the certificate against the host name, not the address
+                self._dns_host = ip
+                try:
+                    return super()._new_conn()
+                except (NewConnectionError, ConnectTimeoutError) as e:
+                    err = e
+            raise err
+        finally:
+            self._dns_host = name
+
+
+class _PublicHTTPConnection(_PublicOnly, HTTPConnection):
+    pass
+
+
+class _PublicHTTPSConnection(_PublicOnly, HTTPSConnection):
+    pass
+
+
+class _PublicHTTPPool(HTTPConnectionPool):
+    ConnectionCls = _PublicHTTPConnection
+
+
+class _PublicHTTPSPool(HTTPSConnectionPool):
+    ConnectionCls = _PublicHTTPSConnection
+
+
+class _PublicAdapter(HTTPAdapter):
+    def init_poolmanager(self, *args, **kwargs):
+        super().init_poolmanager(*args, **kwargs)
+        self.poolmanager.pool_classes_by_scheme = {"http": _PublicHTTPPool, "https": _PublicHTTPSPool}
+
+
+session = requests.Session()
+session.headers.update({"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9"})
+session.mount("http://", _PublicAdapter())
+session.mount("https://", _PublicAdapter())
+
+
+def _scheme_ok(url):
     try:
         p = urlsplit(url)
-        return p.scheme in ("http", "https") and bool(p.hostname) and _public_host(p.hostname)
-    except (ValueError, OSError):
+        return p.scheme in ("http", "https") and bool(p.hostname)
+    except ValueError:
         return False
 
 
 def _fetch(url, params, timeout):
     """One GET, following redirects by hand so each hop is checked, with size and time limits."""
     for _ in range(MAX_REDIRECTS + 1):
-        if not url_allowed(url):
+        if not _scheme_ok(url):
             raise BlockedURL(url)
         resp = session.get(url, params=params, timeout=timeout, allow_redirects=False, stream=True)
         if resp.is_redirect:
