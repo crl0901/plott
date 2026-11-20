@@ -121,6 +121,9 @@ ignore case.
 |---|---|
 | `linkedin` | `keywords`, `location`, `workplace` (`remote`, `hybrid`, `onsite`), `distance` (miles), `days`, `pages` |
 | `dice` | `keywords`, `workplace`, `location` and `radius` (miles), `days` (1, 3, or 7), `pages` (30 jobs each), `employer_types` (default `[Direct Hire]`, which leaves out staffing agencies). US only. |
+| `wellfound` | Startup jobs. `roles`: Wellfound role names, as in wellfound.com/role/r/`<role>` (for example `devops-engineer`). `location`: a Wellfound place name such as `austin` (default: remote jobs). `pages` (about 40 jobs each, default 3). A role name Wellfound does not have is reported in the run log. Applying needs a free Wellfound account. |
+| `talent` | Talent.com. `keywords`, `location` and `radius` (miles), `days`, `pages` (20 jobs each, at most 2). Its remote filter does not work, so use it for local searches. US only. |
+| `remotejobs` | The newest 1000 jobs from remotejobs.com, all remote, in one request. `categories` (optional, for example `[Engineering, Support]`) keeps only those categories. Most of the feed is marketing jobs. |
 | `remoterocketship` | `job_titles`, `pages`, `seniority` (`junior`, `mid`, `senior`, `expert`), `min_salary`, `exclude_keywords`. Uses the API when `REMOTEROCKETSHIP_API_KEY` is set. |
 | `himalayas` | `search` (terms), `pages` (20 jobs each). Skips jobs not open to the US unless `us_only: false`. |
 | `jobicy` | `tags` (one request each, up to 100 jobs), `geo` (default `usa`; `anywhere` for no region filter), `industry` |

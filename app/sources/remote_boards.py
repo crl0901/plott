@@ -64,6 +64,26 @@ def weworkremotely(cfg):
     return out
 
 
+def remotejobs(cfg):
+    """remotejobs.com's RSS feed: its newest 1000 jobs (about the last week and a half), all remote, with
+    full descriptions, in one request. Titles read "Title - Company - Remote". `categories` keeps only
+    those categories (e.g. Engineering, Support, Administrative); most of the feed is Marketing."""
+    want = {c.lower() for c in cfg.get("categories") or []}
+    root = ET.fromstring(_check(get("https://www.remotejobs.com/jobs.rss"), "remotejobs").content)
+    out = []
+    for item in root.iter("item"):
+        g = lambda tag: (item.findtext(tag) or "").strip()
+        if want and g("category").lower() not in want:
+            continue
+        parts = g("title").split(" - ")
+        title, company, loc = (" - ".join(parts[:-2]), parts[-2], parts[-1]) if len(parts) >= 3 else (g("title"), "", "Remote")
+        desc = html_to_text(g("description"))
+        pay, lo, hi = pay_from_text(desc)
+        out.append({"source": "remotejobs", "external_id": g("guid") or g("link"), "company": company,
+                    "title": title, "url": g("link"), "location": loc or "Remote", "workplace": "remote",
+                    "description": desc, "posted_at": g("pubDate"), "pay": pay, "pay_min": lo, "pay_max": hi})
+    return out
+
 def _yearly_pay(lo, hi, period, currency):
     """(text, min, max) from a structured salary; min/max only for yearly USD figures."""
     if not lo and not hi:

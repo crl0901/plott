@@ -14,6 +14,7 @@ let CHIPS = ["All", "Contract"];
 const SOURCE_LABELS = {
   linkedin: "LinkedIn", greenhouse: "Greenhouse", ashby: "Ashby", lever: "Lever", remoteok: "Remote OK",
   remotive: "Remotive", weworkremotely: "We Work Remotely", remoterocketship: "Remote Rocketship", dice: "Dice",
+  talent: "Talent.com", wellfound: "Wellfound", remotejobs: "RemoteJobs.com",
   smartrecruiters: "SmartRecruiters", workable: "Workable", recruitee: "Recruitee", breezy: "Breezy HR",
   bamboohr: "BambooHR", rippling: "Rippling", personio: "Personio", workday: "Workday",
   himalayas: "Himalayas", jobicy: "Jobicy", hackernews: "HN Who's Hiring", usajobs: "USAJOBS", adzuna: "Adzuna",

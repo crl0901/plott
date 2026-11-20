@@ -5,7 +5,8 @@ the cheap filters).
 Job dict keys: source, external_id, company, title, url, location, workplace
 (remote/hybrid/onsite/unknown), employment_type, pay, pay_min, pay_max, description, posted_at.
 """
-from . import adzuna, ats, dice, generic, hackernews, linkedin, remote_boards, remoterocketship, usajobs
+from . import (adzuna, ats, dice, generic, hackernews, linkedin, remote_boards, remoterocketship, talent,
+               usajobs, wellfound)
 
 FETCHERS = {
     "linkedin": linkedin.fetch,
@@ -25,12 +26,16 @@ FETCHERS = {
     "adzuna": adzuna.fetch,
     "remoterocketship": remoterocketship.fetch,
     "dice": dice.fetch,
+    "talent": talent.fetch,
+    "wellfound": wellfound.fetch,
+    "remotejobs": remote_boards.remotejobs,
     "url": generic.fetch,
 }
 
 ENRICHERS = {
     "linkedin": linkedin.enrich,
     "dice": dice.enrich,
+    "talent": talent.enrich,
     "greenhouse": ats.enrich_greenhouse,
     "smartrecruiters": ats.enrich_smartrecruiters,
     "workable": ats.enrich_workable,

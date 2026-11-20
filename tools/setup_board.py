@@ -439,6 +439,30 @@ def sources_text(titles, us, country, local, city, miles, min_pay):
     name: Hacker News
     enabled: false
 """)
+    roles = list(dict.fromkeys(re.sub(r"[^a-z0-9]+", "-", title_core(t)).strip("-") for t in titles))
+    out.append(f"""  # Remote startup jobs. Roles are Wellfound role names as in wellfound.com/role/r/<role>; a name
+  # Wellfound doesn't have is reported in the run log.
+  - type: wellfound
+    name: Wellfound
+    pages: 2
+    roles:
+{block(roles, 6)}
+
+  # The newest 1000 remote jobs from remotejobs.com in one request; the title filter screens them.
+  - type: remotejobs
+    name: RemoteJobs.com
+""")
+    if us and local:
+        out.append(f"""  # Talent.com has no working remote filter, so it is used for the local search only.
+  - type: talent
+    name: Talent.com - near me
+    location: {q(city)}
+    radius: {miles}
+    days: 7
+    pages: 2
+    keywords:
+{t}
+""")
     if us:
         out.append(f"""  # Needs USAJOBS_API_KEY and USAJOBS_EMAIL in .env (free: developer.usajobs.gov).
   - type: usajobs

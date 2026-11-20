@@ -9,8 +9,8 @@ resume and cover letter for the jobs you apply to.
 
 ## What Plott does
 
-- Searches LinkedIn, Dice, Himalayas, Jobicy, Remote Rocketship, Hacker News, USAJOBS, Adzuna, and
-  company job boards on Greenhouse, Lever, Ashby, Workday, and other systems.
+- Searches LinkedIn, Dice, Wellfound, Talent.com, RemoteJobs.com, Himalayas, Jobicy, Remote
+  Rocketship, Hacker News, USAJOBS, Adzuna, and company job boards on Greenhouse, Lever, Ashby, Workday, and other systems.
 - Runs once a day at a time you choose, or when you click **Scrape now**.
 - Skips jobs you have already seen, and filters by job title, location, pay, job type, company,
   and posting age.
@@ -144,8 +144,8 @@ account, and data.
 
 ## Limits
 
-- Plott is built mainly for job searches in the United States. Dice, USAJOBS, and Adzuna search
-  only US jobs, and pay filters use US dollars. For other countries, answer "n" to the United
+- Plott is built mainly for job searches in the United States. Dice, Talent.com, USAJOBS, and
+  Adzuna search only US jobs, and pay filters use US dollars. For other countries, answer "n" to the United
   States question during setup.
 - Job sites change their pages. When a site changes, its source can stop working until Plott is
   updated. Errors appear in the run log under **Sources**.
