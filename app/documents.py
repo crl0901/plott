@@ -9,6 +9,7 @@ import threading
 
 import markdown
 from weasyprint import HTML
+from weasyprint.urls import URLFetcher
 
 from . import claude, config, db
 from .sources import enrich
@@ -128,10 +129,13 @@ def _unique(path):
     return path
 
 
-def _no_fetch(url, *args, **kwargs):
+class _NoFetch(URLFetcher):
     """WeasyPrint URL fetcher that refuses everything. The PDF needs no outside files (the CSS is
-    inline), and model output must not be able to pull in local files or make requests."""
-    raise ValueError(f"blocked: {url[:100]}")
+    inline), and model output must not be able to pull in local files or make requests. WeasyPrint
+    logs each refused URL as a warning and leaves that image or stylesheet out of the PDF."""
+
+    def fetch(self, url, headers=None):
+        raise ValueError(f"blocked: {url[:100]}")
 
 
 def _pdf(md_text, path, kind):
@@ -147,7 +151,7 @@ def _pdf(md_text, path, kind):
     doc_title = f"{title} - {'Cover Letter' if kind == 'cover_letter' else 'Resume'}"
     HTML(string=f'<html lang="en"><head><meta charset="utf-8"><title>{doc_title}</title>'
                 f'<meta name="author" content="{title}"><style>{css}</style></head>'
-                f'<body class="{kind}">{body}</body></html>', url_fetcher=_no_fetch).write_pdf(path)
+                f'<body class="{kind}">{body}</body></html>', url_fetcher=_NoFetch()).write_pdf(path)
 
 
 def start(job_id, want_resume=True, want_cover=True):

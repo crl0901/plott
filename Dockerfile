@@ -8,7 +8,7 @@ ARG BWS_VERSION=""
 ARG BWS_SHA256=""
 ARG APP_UID=1000
 RUN apt-get update && apt-get install -y --no-install-recommends curl unzip ca-certificates tzdata \
-    libpango-1.0-0 libpangoft2-1.0-0 fonts-liberation \
+    libpango-1.0-0 libpangoft2-1.0-0 libharfbuzz-subset0 fonts-liberation \
  && if [ -n "$BWS_VERSION" ]; then \
       curl -fsSL -o /tmp/bws.zip \
         "https://github.com/bitwarden/sdk-sm/releases/download/bws-v${BWS_VERSION}/bws-x86_64-unknown-linux-gnu-${BWS_VERSION}.zip" \

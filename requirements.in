@@ -7,6 +7,6 @@ APScheduler==3.10.4
 PyYAML==6.0.2
 requests==2.34.2
 beautifulsoup4==4.12.3
-Markdown==3.7
-weasyprint==63.1
+Markdown==3.11.3
+weasyprint==70.0
 defusedxml==0.7.1
