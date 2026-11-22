@@ -7,6 +7,10 @@ application from "Shortlisted" to "Offer".
 With Claude (optional), Plott also scores each job against your resume and writes a tailored
 resume and cover letter for the jobs you apply to.
 
+![A Plott board with sample jobs in the Shortlisted, Applied, Interviewing, Offer, Rejected, No Response, and Skipped columns](docs/screenshot.png)
+
+*The board with sample data. The person, companies, and jobs are made up.*
+
 ## What Plott does
 
 - Searches LinkedIn, Dice, Wellfound, Talent.com, RemoteJobs.com, Himalayas, Jobicy, Remote
